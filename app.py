@@ -104,9 +104,9 @@ def rss_feed():
     rss_items = "".join(
         f"""
         <item>
-            <title>{torrent['title']} ({torrent['size']})</title>
+            <title>{torrent['title']}</title>
             <link>{torrent['magnet']}</link>
-            <description>Size: {torrent['size']} | Resolution: {torrent['resolution']}</description>
+            <description>Size: {torrent['size']}</description>
         </item>
         """ for torrent in all_movies
     )
