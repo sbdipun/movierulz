@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify
 import requests
 from bs4 import BeautifulSoup
 import urllib.parse
@@ -38,33 +38,7 @@ def fetch_movie_links(movie_url):
 
     return movie_links
 
-@app.route('/')
-def index():
-    url = 'https://www.5movierulz.soy/'
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-    }
-
-    response = requests.get(url, headers=headers)
-    soup = BeautifulSoup(response.text, 'html.parser')
-
-    # Find all movie links
-    movie_elements = soup.find_all('div', class_='boxed film')
-
-    all_movies = []
-
-    for movie in movie_elements:
-        title_tag = movie.find('a')
-        if title_tag:
-            movie_link = title_tag.get('href', '')
-
-            if movie_link:
-                movie_links = fetch_movie_links(movie_link)
-                all_movies.extend(movie_links)
-
-    return render_template('index.html', movies=all_movies)
-
-@app.route('/api/movies')
+@app.route('/api/movies', methods=['GET'])
 def api_movies():
     url = 'https://www.5movierulz.soy/'
     headers = {
