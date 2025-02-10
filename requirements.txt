@@ -1,3 +1,10 @@
 flask
 requests
 beautifulsoup4
+lxml
+pybase64
+regex
+Werkzeug
+gunicorn
+apscheduler
+httpx
