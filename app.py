@@ -20,7 +20,7 @@ def fetch_movie_links_from_page(movie_url):
     }
     
     try:
-        response = requests.get(movie_url, headers=headers, timeout=10)
+        response = requests.get(movie_url, headers=headers, timeout=60)
         response.raise_for_status()  # Raise an exception for HTTP errors
     except requests.RequestException as e:
         print(f"Error fetching {movie_url}: {e}")
