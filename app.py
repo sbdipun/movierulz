@@ -2,6 +2,7 @@ from flask import Flask, Response
 import requests
 from bs4 import BeautifulSoup
 import re
+import urllib.parse
 
 app = Flask(__name__)
 
@@ -9,14 +10,21 @@ BASE_URL = "https://www.5movierulz.soy/"
 
 def extract_title(magnet_link):
     match = re.search(r"dn=([^&]+)", magnet_link)
-    return match.group(1).replace(".", " ") if match else "Unknown Title"
+    return urllib.parse.unquote(match.group(1).replace(".", " ")) if match else "Unknown Title"
 
 def fetch_movie_links(movie_url):
     headers = {"User-Agent": "Mozilla/5.0"}
-    response = requests.get(movie_url, headers=headers)
-    soup = BeautifulSoup(response.text, "html.parser")
+    
+    try:
+        response = requests.get(movie_url, headers=headers, timeout=10)
+        response.raise_for_status()
+    except requests.RequestException as e:
+        print(f"Request failed: {e}")
+        return []
 
+    soup = BeautifulSoup(response.text, "html.parser")
     links = []
+
     for a_tag in soup.find_all("a", class_="mv_button_css"):
         magnet_link = a_tag.get("href")
         if magnet_link and magnet_link.startswith("magnet:"):
@@ -33,8 +41,11 @@ def home():
 
 @app.route("/rss")
 def rss_feed():
-    movie_url = BASE_URL  # Update if a specific movie page is needed
+    movie_url = BASE_URL
     torrents = fetch_movie_links(movie_url)
+
+    if not torrents:
+        return Response("<?xml version='1.0' encoding='UTF-8' ?><rss><channel><title>No Data</title></channel></rss>", mimetype="application/xml")
 
     rss_items = "".join(
         f"""
