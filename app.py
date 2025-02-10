@@ -1,9 +1,11 @@
-from flask import Flask, jsonify
+from flask import Flask, Response
 import requests
 from bs4 import BeautifulSoup
 import urllib.parse
 
 app = Flask(__name__)
+
+BASE_URL = "https://www.5movierulz.soy/"
 
 def extract_title_from_magnet(magnet_link):
     """Extracts movie title from the magnet link's 'dn' parameter."""
@@ -13,13 +15,19 @@ def extract_title_from_magnet(magnet_link):
     return title.replace('.', ' ')  # Replace dots with spaces for readability
 
 def fetch_movie_links(movie_url):
+    """Fetches movie torrent magnet links from a specific movie page."""
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     }
 
-    response = requests.get(movie_url, headers=headers)
-    soup = BeautifulSoup(response.text, 'html.parser')
+    try:
+        response = requests.get(movie_url, headers=headers, timeout=30)
+        response.raise_for_status()
+    except requests.RequestException as e:
+        print(f"Failed to fetch {movie_url}: {e}")
+        return []
 
+    soup = BeautifulSoup(response.text, 'html.parser')
     movie_links = []
 
     # Find all <a> elements with class "mv_button_css"
@@ -27,6 +35,9 @@ def fetch_movie_links(movie_url):
 
     for link in download_links:
         magnet_link = link.get('href')
+        if not magnet_link:
+            continue
+
         size_info = link.find('small').text if link.find('small') else 'Unknown Size'
         movie_title = extract_title_from_magnet(magnet_link)
 
@@ -38,14 +49,20 @@ def fetch_movie_links(movie_url):
 
     return movie_links
 
-@app.route('/api/movies', methods=['GET'])
-def api_movies():
-    url = 'https://www.5movierulz.soy/'
+@app.route("/rss", methods=["GET"])
+def rss_feed():
+    """Generate an RSS feed with movie torrent links."""
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     }
 
-    response = requests.get(url, headers=headers)
+    try:
+        response = requests.get(BASE_URL, headers=headers, timeout=30)
+        response.raise_for_status()
+    except requests.RequestException as e:
+        print(f"Failed to fetch homepage: {e}")
+        return Response("<?xml version='1.0' encoding='UTF-8' ?><rss><channel><title>No Data</title></channel></rss>", mimetype="application/xml")
+
     soup = BeautifulSoup(response.text, 'html.parser')
 
     # Find all movie links
@@ -62,7 +79,35 @@ def api_movies():
                 movie_links = fetch_movie_links(movie_link)
                 all_movies.extend(movie_links)
 
-    return jsonify(all_movies)
+    if not all_movies:
+        return Response(
+            "<?xml version='1.0' encoding='UTF-8' ?><rss><channel><title>No Data</title></channel></rss>",
+            mimetype="application/xml"
+        )
+
+    # Construct RSS items
+    rss_items = "".join(
+        f"""
+        <item>
+            <title>{torrent['title']} ({torrent['size']})</title>
+            <link>{torrent['magnet']}</link>
+        </item>
+        """ for torrent in all_movies
+    )
+
+    # Complete RSS structure
+    rss_content = f"""<?xml version="1.0" encoding="UTF-8" ?>
+    <rss version="2.0">
+        <channel>
+            <title>5MovieRulz - Latest Torrents</title>
+            <link>{BASE_URL}</link>
+            <description>Latest Movie Torrent Links</description>
+            {rss_items}
+        </channel>
+    </rss>
+    """
+
+    return Response(rss_content, mimetype="application/xml")
 
 if __name__ == "__main__":
     app.run(debug=True)
