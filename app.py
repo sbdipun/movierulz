@@ -86,4 +86,4 @@ def rss_feed():
     return Response(rss_content, mimetype="application/xml")
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True)  # Change to debug=False in production
