@@ -3,6 +3,7 @@ import requests
 from bs4 import BeautifulSoup
 import urllib.parse
 import html
+import re
 
 app = Flask(__name__)
 
@@ -14,6 +15,11 @@ def extract_title_from_magnet(magnet_link):
     query_params = urllib.parse.parse_qs(parsed_url.query)
     title = query_params.get('dn', ['Unknown Title'])[0]
     return title.replace('.', ' ')  # Replace dots with spaces for readability
+
+def extract_resolution(title):
+    """Extracts resolution (e.g., 1080p, 720p) from the movie title."""
+    match = re.search(r'(\d{3,4}p)', title)
+    return match.group(1) if match else "Unknown Resolution"
 
 def fetch_movie_links(movie_url):
     """Fetches movie torrent magnet links from a specific movie page."""
@@ -41,16 +47,19 @@ def fetch_movie_links(movie_url):
 
         size_info = link.find('small').text if link.find('small') else 'Unknown Size'
         movie_title = extract_title_from_magnet(magnet_link)
+        resolution = extract_resolution(movie_title)
 
         # Escape special characters for XML safety
         movie_title = html.escape(movie_title)
         magnet_link = html.escape(magnet_link)
         size_info = html.escape(size_info)
+        resolution = html.escape(resolution)
 
         movie_links.append({
             "title": movie_title,
             "magnet": magnet_link,
-            "size": size_info
+            "size": size_info,
+            "resolution": resolution
         })
 
     return movie_links
@@ -97,6 +106,7 @@ def rss_feed():
         <item>
             <title>{torrent['title']} ({torrent['size']})</title>
             <link>{torrent['magnet']}</link>
+            <description>Size: {torrent['size']} | Resolution: {torrent['resolution']}</description>
         </item>
         """ for torrent in all_movies
     )
