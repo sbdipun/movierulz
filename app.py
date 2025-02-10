@@ -13,27 +13,38 @@ def extract_title(magnet_link):
     return urllib.parse.unquote(match.group(1).replace(".", " ")) if match else "Unknown Title"
 
 def fetch_movie_links(movie_url):
-    headers = {"User-Agent": "Mozilla/5.0"}
-    
-    try:
-        response = requests.get(movie_url, headers=headers, timeout=10)
-        response.raise_for_status()
-    except requests.RequestException as e:
-        print(f"Request failed: {e}")
-        return []
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
 
-    soup = BeautifulSoup(response.text, "html.parser")
-    links = []
+    response = requests.get(movie_url, headers=headers)
+    soup = BeautifulSoup(response.text, 'html.parser')
 
-    for a_tag in soup.find_all("a", class_="mv_button_css"):
-        magnet_link = a_tag.get("href")
-        if magnet_link and magnet_link.startswith("magnet:"):
-            title = extract_title(magnet_link)
-            size_match = re.search(r"(\d+(\.\d+)?\s?(GB|MB|TB|KB))", a_tag.text, re.I)
-            size = size_match.group(1) if size_match else "Unknown Size"
-            links.append({"title": title, "magnet": magnet_link, "size": size})
+    # Debug: Print out the HTML of the movie page
+    print(f"Fetching movie links from: {movie_url}")
+    print(soup.prettify())  # Inspect the structure of the page
 
-    return links
+    movie_links = []
+
+    # Find all <a> elements with class "mv_button_css"
+    download_links = soup.find_all('a', class_='mv_button_css')
+
+    for link in download_links:
+        magnet_link = link.get('href')
+        if not magnet_link:
+            continue  # Skip if no href attribute
+
+        size_info = link.find('small').text if link.find('small') else 'Unknown Size'
+        movie_title = extract_title_from_magnet(magnet_link)
+
+        movie_links.append({
+            "title": movie_title,
+            "magnet": magnet_link,
+            "size": size_info
+        })
+
+    return movie_links
+
 
 @app.route("/")
 def home():
