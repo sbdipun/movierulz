@@ -2,6 +2,7 @@ from flask import Flask, Response
 import requests
 from bs4 import BeautifulSoup
 import urllib.parse
+import html
 
 app = Flask(__name__)
 
@@ -40,6 +41,11 @@ def fetch_movie_links(movie_url):
 
         size_info = link.find('small').text if link.find('small') else 'Unknown Size'
         movie_title = extract_title_from_magnet(magnet_link)
+
+        # Escape special characters for XML safety
+        movie_title = html.escape(movie_title)
+        magnet_link = html.escape(magnet_link)
+        size_info = html.escape(size_info)
 
         movie_links.append({
             "title": movie_title,
@@ -100,7 +106,7 @@ def rss_feed():
     <rss version="2.0">
         <channel>
             <title>5MovieRulz - Latest Torrents</title>
-            <link>{BASE_URL}</link>
+            <link>{html.escape(BASE_URL)}</link>
             <description>Latest Movie Torrent Links</description>
             {rss_items}
         </channel>
